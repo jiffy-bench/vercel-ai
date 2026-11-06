@@ -45,7 +45,7 @@ jobs:
             while IFS= read -r f; do
               if git --literal-pathspecs ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
                 git --literal-pathspecs update-index --skip-worktree -- "$f"
-              else printf '/%s\n' "$(printf '%s' "$f" | sed 's/[][*?\\!#]/\\&/g')" >> "$exclude"; fi
+              else printf '/%s\n' "$(printf '%s' "$f" | sed -e 's/[][*?\\!#]/\\&/g' -e 's/ $/\\ /')" >> "$exclude"; fi
             done < "$list"
           fi
           cp -R "$src/." .
@@ -85,7 +85,7 @@ jobs:
             while IFS= read -r f; do
               if git --literal-pathspecs ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
                 git --literal-pathspecs update-index --skip-worktree -- "$f"
-              else printf '/%s\n' "$(printf '%s' "$f" | sed 's/[][*?\\!#]/\\&/g')" >> "$exclude"; fi
+              else printf '/%s\n' "$(printf '%s' "$f" | sed -e 's/[][*?\\!#]/\\&/g' -e 's/ $/\\ /')" >> "$exclude"; fi
             done < "$list"
           fi
           cp -R "$src/." .
@@ -140,7 +140,7 @@ jobs:
             while IFS= read -r f; do
               if git --literal-pathspecs ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
                 git --literal-pathspecs update-index --skip-worktree -- "$f"
-              else printf '/%s\n' "$(printf '%s' "$f" | sed 's/[][*?\\!#]/\\&/g')" >> "$exclude"; fi
+              else printf '/%s\n' "$(printf '%s' "$f" | sed -e 's/[][*?\\!#]/\\&/g' -e 's/ $/\\ /')" >> "$exclude"; fi
             done < "$list"
           fi
           cp -R "$src/." .
@@ -191,7 +191,7 @@ jobs:
             while IFS= read -r f; do
               if git --literal-pathspecs ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
                 git --literal-pathspecs update-index --skip-worktree -- "$f"
-              else printf '/%s\n' "$(printf '%s' "$f" | sed 's/[][*?\\!#]/\\&/g')" >> "$exclude"; fi
+              else printf '/%s\n' "$(printf '%s' "$f" | sed -e 's/[][*?\\!#]/\\&/g' -e 's/ $/\\ /')" >> "$exclude"; fi
             done < "$list"
           fi
           cp -R "$src/." .
@@ -255,7 +255,7 @@ jobs:
             while IFS= read -r f; do
               if git --literal-pathspecs ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
                 git --literal-pathspecs update-index --skip-worktree -- "$f"
-              else printf '/%s\n' "$(printf '%s' "$f" | sed 's/[][*?\\!#]/\\&/g')" >> "$exclude"; fi
+              else printf '/%s\n' "$(printf '%s' "$f" | sed -e 's/[][*?\\!#]/\\&/g' -e 's/ $/\\ /')" >> "$exclude"; fi
             done < "$list"
           fi
           cp -R "$src/." .
@@ -309,7 +309,7 @@ jobs:
             while IFS= read -r f; do
               if git --literal-pathspecs ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
                 git --literal-pathspecs update-index --skip-worktree -- "$f"
-              else printf '/%s\n' "$(printf '%s' "$f" | sed 's/[][*?\\!#]/\\&/g')" >> "$exclude"; fi
+              else printf '/%s\n' "$(printf '%s' "$f" | sed -e 's/[][*?\\!#]/\\&/g' -e 's/ $/\\ /')" >> "$exclude"; fi
             done < "$list"
           fi
           cp -R "$src/." .
