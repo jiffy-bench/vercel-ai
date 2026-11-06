@@ -230,7 +230,7 @@ jobs:
           fi
       - name: Tensile selection (shadow)
         id: tensile
-        uses: rsyed94/tensile-action@6b066ae7ea7bb376b7049fb7ef952b0fde0ba336
+        uses: rsyed94/tensile-action@bf465a2f8f66e7225ed32003c1661ee984aa33d3
         continue-on-error: true
         with:
           phase: select
