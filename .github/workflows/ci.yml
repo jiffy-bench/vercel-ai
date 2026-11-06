@@ -169,6 +169,7 @@ jobs:
     needs: [build-packages, test_node_versions]
     permissions:
       contents: read
+      id-token: write
     strategy:
       matrix:
         node-version: ${{ fromJSON(needs.test_node_versions.outputs.node_versions) }}
@@ -217,6 +218,29 @@ jobs:
         uses: vercel/setup-turborepo-remote-cache-action@49d7b1b46ba4c9251e1977986bfe18336feabc8f # v1.1.0
         with:
           team: ${{ vars.TURBO_TEAM }}
+      - name: "Replay farm: fetch the PR base for Tensile"
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+            git fetch --no-tags --quiet --depth=100 origin "$BASE" "$GITHUB_SHA"
+          fi
+      - name: Tensile selection (shadow)
+        id: tensile
+        uses: rsyed94/tensile-action@a64eb2feaf04f8407498065120422e6ff30d33a4
+        continue-on-error: true
+        with:
+          phase: select
+          mode: shadow
+          runner: vitest
+          service-url: https://jiffy-app-production.up.railway.app
+          check-run-id: ${{ job.check_run_id }}
+          matrix-key: ${{ toJSON(matrix) }}
+          test-step: Run tests
+          report: .jiffy/no-report.json
 
       - name: Run tests
         env:
