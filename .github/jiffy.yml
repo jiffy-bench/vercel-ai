@@ -1,0 +1,4 @@
+# Tensile test selection settings. Written by the setup PR; edit freely.
+# Editing one of these workflows runs the full suite, since they decide how the tests run.
+testWorkflows:
+  - .github/workflows/ci.yml

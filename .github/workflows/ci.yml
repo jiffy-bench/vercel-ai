@@ -10,6 +10,9 @@ on:
       - release-v*
   pull_request:
 
+  merge_group:
+    types:
+      - checks_requested
 permissions:
   contents: read
 
@@ -23,6 +26,27 @@ env:
         'local:rw,remote:rw' || 'local:rw' }}
 
 jobs:
+  jiffy-gate:
+    name: Jiffy gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      run-all: ${{ steps.gate.outputs.run-all || 'true' }}
+      tests: ${{ steps.gate.outputs.tests || '[]' }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - uses: rsyed94/jiffy@27fc5c2fdd33ad5d0ced231fbddb56155aaab5bd # action/v1
+        id: gate
+        continue-on-error: true
+        with:
+          service-url: https://jiffy-app-production.up.railway.app
+          run-all: ${{ vars.JIFFY_RUN_ALL }}
+
   types:
     name: 'TypeScript'
     runs-on: ubuntu-latest
@@ -62,10 +86,17 @@ jobs:
         run: pnpm run type-check:full
 
   build-packages:
+    needs:
+      - jiffy-gate
+    if: ${{ !cancelled() }}
     name: 'Build Packages'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      JIFFY_RUN_ALL: ${{ needs.jiffy-gate.outputs.run-all || 'true' }}
+      JIFFY_TESTS: ${{ needs.jiffy-gate.outputs.tests || '[]' }}
+      JIFFY_RECORD: ${{ github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -118,6 +149,24 @@ jobs:
         with:
           name: package-build-artifacts
           path: package-build-artifacts.tgz
+      - name: Keep Jiffy coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() && env.JIFFY_RECORD == 'true' }}
+        with:
+          name: jiffy-coverage-${{ github.job }}-${{ strategy.job-index }}
+          path: .jiffy/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 1
+      - name: Keep test results for Jiffy
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: jiffy-results-${{ github.job }}-${{ strategy.job-index }}
+          path: .jiffy/results/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 30
 
   test_node_versions:
     name: 'Test Node Versions'
@@ -255,6 +304,9 @@ jobs:
         run: pnpm test:ci
 
   test_ai_matrix:
+    needs:
+      - jiffy-gate
+    if: ${{ !cancelled() }}
     name: 'Test AI'
     runs-on: ubuntu-latest
     permissions:
@@ -263,6 +315,10 @@ jobs:
       matrix:
         node-version: [22, 24, 26]
         shard: ['1/4', '2/4', '3/4', '4/4']
+    env:
+      JIFFY_RUN_ALL: ${{ needs.jiffy-gate.outputs.run-all || 'true' }}
+      JIFFY_TESTS: ${{ needs.jiffy-gate.outputs.tests || '[]' }}
+      JIFFY_RECORD: ${{ github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -309,14 +365,39 @@ jobs:
         run: |
           pnpm test:node --shard ${{ matrix.shard }}
           pnpm test:edge --shard ${{ matrix.shard }}
+      - name: Keep Jiffy coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() && env.JIFFY_RECORD == 'true' }}
+        with:
+          name: jiffy-coverage-${{ github.job }}-${{ strategy.job-index }}
+          path: .jiffy/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 1
+      - name: Keep test results for Jiffy
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: jiffy-results-${{ github.job }}-${{ strategy.job-index }}
+          path: .jiffy/results/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 30
 
   test_codemod_matrix:
+    needs:
+      - jiffy-gate
+    if: ${{ !cancelled() }}
     name: 'Test Codemod'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         node-version: [22, 24, 26]
         shard: ['1/4', '2/4', '3/4', '4/4']
+    env:
+      JIFFY_RUN_ALL: ${{ needs.jiffy-gate.outputs.run-all || 'true' }}
+      JIFFY_TESTS: ${{ needs.jiffy-gate.outputs.tests || '[]' }}
+      JIFFY_RECORD: ${{ github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -352,3 +433,54 @@ jobs:
       - name: Run codemod tests
         working-directory: packages/codemod
         run: pnpm exec vitest --config vitest.config.ts --run --shard ${{ matrix.shard }}
+      - name: Keep Jiffy coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() && env.JIFFY_RECORD == 'true' }}
+        with:
+          name: jiffy-coverage-${{ github.job }}-${{ strategy.job-index }}
+          path: .jiffy/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 1
+      - name: Keep test results for Jiffy
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: jiffy-results-${{ github.job }}-${{ strategy.job-index }}
+          path: .jiffy/results/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 30
+
+  jiffy-upload:
+    name: Jiffy coverage upload
+    needs:
+      - build-packages
+      - test_ai_matrix
+      - test_codemod_matrix
+    if: ${{ !cancelled() && (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          pattern: jiffy-coverage-*
+          path: jiffy-coverage
+      - name: Upload coverage to Jiffy
+        shell: bash
+        env:
+          JIFFY_SERVER: https://jiffy-app-production.up.railway.app
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          token=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=jiffy" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).value))')
+          echo "::add-mask::$token"
+          put() { curl -sSf -X PUT -H "Authorization: Bearer $token" -H "content-type: application/json" --data-binary @"$1" "$JIFFY_SERVER/v1/maps/$GITHUB_REPOSITORY/$GITHUB_SHA/$2/$3"; }
+          for dir in jiffy-coverage/*/; do
+            job=$(basename "$dir")
+            for f in "$dir"coverage-*.json; do case "$f" in *-nodes.json | *-nodes.always-run.json) continue ;; esac; put "$f" parts "$job-$(basename "$f" .json)"; done
+            for f in "$dir"report-*.json; do put "$f" durations "$job-$(basename "$f" .json)"; done
+          done
